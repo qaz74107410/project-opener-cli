@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Bash completion script for project-opener
+
+_project_opener_completions() {
+    local cur prev opts cmds
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    
+    # List of available commands
+    cmds="add remove list companies search open set-vscode-cmd set-base-path scan interactive i help"
+    
+    # Main command completion
+    if [[ ${COMP_CWORD} -eq 1 ]]; then
+        COMPREPLY=( $(compgen -W "${cmds}" -- "${cur}") )
+        return 0
+    fi
+    
+    # Command specific completions
+    case "${prev}" in
+        "open"|"remove")
+            # Get project names from the config file
+            if [[ -f "${HOME}/.project-opener.json" ]]; then
+                # Use grep and awk to extract just the project names
+                local project_names=$(grep -o '"name":"[^"]*"' "${HOME}/.project-opener.json" | awk -F':' '{gsub(/"/, "", $2); print $2}')
+                COMPREPLY=( $(compgen -W "${project_names}" -- "${cur}") )
+            fi
+            ;;
+        "add")
+            # Complete with directories when adding a project
+            COMPREPLY=( $(compgen -d -- "${cur}") )
+            ;;
+        "scan"|"set-base-path")
+            # Complete with directories
+            COMPREPLY=( $(compgen -d -- "${cur}") )
+            ;;
+        "--company"|"-c")
+            # Get company names from the config file
+            if [[ -f "${HOME}/.project-opener.json" ]]; then
+                # Read the config file
+                local config_content=$(cat "${HOME}/.project-opener.json")
+                
+                # Check if companies section exists
+                if [[ "$config_content" =~ '"companies":{' ]]; then
+                    # Extract company names
+                    local company_names=$(grep -o '"[^"]*":\[' <<< "$config_content" | sed 's/:\[$//' | sed 's/"//g')
+                    COMPREPLY=( $(compgen -W "${company_names}" -- "${cur}") )
+                fi
+            fi
+            ;;
+        "list"|"search"|"scan")
+            # Offer --company option
+            if [[ ${cur} == -* ]]; then
+                COMPREPLY=( $(compgen -W "--company -c" -- "${cur}") )
+            fi
+            ;;
+    esac
+    
+    # Check for options after a project name in add command
+    if [[ ${COMP_CWORD} -ge 3 && ${COMP_WORDS[1]} == "add" ]]; then
+        if [[ ${cur} == -* ]]; then
+            COMPREPLY=( $(compgen -W "--company -c" -- "${cur}") )
+        fi
+    fi
+    
+    return 0
+}
+
+# Register the completion function
+complete -F _project_opener_completions project-opener

@@ -1,0 +1,118 @@
+#compdef project-opener
+
+_project_opener() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    # Debug output - can be removed after debugging
+    # echo "Debug: Starting completion" >&2
+
+    local -a commands
+    commands=(
+        'search:Search for a project matching the query'
+        'open:Open a project directly by name'
+        'add:Add a new project'
+        'remove:Remove a project'
+        'list:List all configured projects'
+        'companies:List all companies'
+        'scan:Scan a directory for projects'
+        'set-vscode-cmd:Set the VSCode command'
+        'set-base-path:Set the base path for projects'
+        'interactive:Enter interactive search mode'
+        'i:Alias for interactive mode'
+        'help:Show help information'
+    )
+
+    # Define the first argument as command
+    if (( CURRENT == 2 )); then
+        _describe -t commands 'project-opener commands' commands
+        return
+    fi
+
+    # Handle command-specific completions
+    local cmd="${words[2]}"
+    case "$cmd" in
+        open|remove)
+            # Simple project name completion
+            if (( CURRENT == 3 )); then
+                local projects_json="$HOME/.project-opener.json"
+                if [[ -f "$projects_json" ]]; then
+                    # Extract project names using jq if available
+                    if command -v jq >/dev/null 2>&1; then
+                        local -a project_names=($(jq -r '.projects[].name' "$projects_json"))
+                        _describe -t projects 'projects' project_names
+                    else
+                        # Fallback to grep/awk if jq is not available
+                        local -a project_names=($(grep -o '"name":"[^"]*"' "$projects_json" | awk -F: '{gsub(/"/, "", $2); print $2}'))
+                        _describe -t projects 'projects' project_names
+                    fi
+                fi
+            fi
+            ;;
+            
+        add)
+            if (( CURRENT == 3 )); then
+                # No completion for project name (first arg)
+                return
+            elif (( CURRENT == 4 )); then
+                # Directory completion for path (second arg)
+                _files -/
+            else
+                # Options after project and path
+                _arguments \
+                    '(-c --company)'{-c,--company}'[Assign to a company]:company:->companies'
+                
+                if [[ "$state" == "companies" ]]; then
+                    _complete_companies
+                fi
+            fi
+            ;;
+            
+        list|search)
+            _arguments \
+                '(-c --company)'{-c,--company}'[Filter by company]:company:->companies'
+            
+            if [[ "$state" == "companies" ]]; then
+                _complete_companies
+            fi
+            ;;
+            
+        scan)
+            if (( CURRENT == 3 )); then
+                _files -/
+            else
+                _arguments \
+                    '(-c --company)'{-c,--company}'[Assign to a company]:company:->companies'
+                
+                if [[ "$state" == "companies" ]]; then
+                    _complete_companies
+                fi
+            fi
+            ;;
+            
+        set-base-path)
+            _files -/
+            ;;
+    esac
+}
+
+# Function to complete company names
+_complete_companies() {
+    local projects_json="$HOME/.project-opener.json"
+    if [[ -f "$projects_json" ]]; then
+        # Try to use jq if available
+        if command -v jq >/dev/null 2>&1; then
+            local -a company_names=($(jq -r 'if .companies then keys_unsorted[] else empty end' "$projects_json"))
+            _describe -t companies 'companies' company_names
+        else
+            # Fallback to grep/sed
+            local config=$(cat "$projects_json")
+            if [[ "$config" =~ '"companies":{' ]]; then
+                local -a company_names=($(echo "$config" | grep -o '"companies":{[^}]*}' | grep -o '"[^"]*":\[' | sed 's/:\[$//g' | sed 's/"//g'))
+                _describe -t companies 'companies' company_names
+            fi
+        fi
+    fi
+}
+
+_project_opener
