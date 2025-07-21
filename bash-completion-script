@@ -9,7 +9,7 @@ _project_opener_completions() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     
     # List of available commands
-    cmds="add remove list companies search open set-vscode-cmd set-base-path scan interactive i help"
+    cmds="add remove list companies search open go set-vscode-cmd set-base-path scan interactive i help"
     
     # Main command completion
     if [[ ${COMP_CWORD} -eq 1 ]]; then
@@ -19,7 +19,7 @@ _project_opener_completions() {
     
     # Command specific completions
     case "${prev}" in
-        "open"|"remove")
+        "open"|"remove"|"go")
             # Get project names from the config file
             if [[ -f "${HOME}/.project-opener.json" ]]; then
                 # Use grep and awk to extract just the project names

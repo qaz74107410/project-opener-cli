@@ -11,6 +11,7 @@ _project_opener() {
     commands=(
         'search:Search for a project matching the query'
         'open:Open a project directly by name'
+        'go:Get the path to a project (for cd command)'
         'add:Add a new project'
         'remove:Remove a project'
         'list:List all configured projects'
@@ -32,7 +33,7 @@ _project_opener() {
     # Handle command-specific completions
     local cmd="${words[2]}"
     case "$cmd" in
-        open|remove)
+        open|remove|go)
             # Simple project name completion
             if (( CURRENT == 3 )); then
                 local projects_json="$HOME/.project-opener.json"

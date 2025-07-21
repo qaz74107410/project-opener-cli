@@ -553,6 +553,23 @@ function initCLI() {
       scanForProjects(directory || config.projectsBasePath, options.company);
     });
   
+  // Go command
+  program
+    .command('go <name>')
+    .description('Get the path to a project (for cd command)')
+    .action((name) => {
+      const project = config.projects.find(p => p.name === name);
+      
+      if (project) {
+        // Output only the path, no extra text, so it can be used with cd
+        console.log(project.path);
+      } else {
+        // Write error to stderr so stdout remains clean for shell usage
+        console.error(chalk.red(`Project not found: ${name}`));
+        process.exit(1);
+      }
+    });
+
   // Interactive command
   program
     .command('interactive')
