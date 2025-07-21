@@ -68,6 +68,16 @@ pgo() {
         project-opener go "$1"
     fi
 }
+
+# Tab completion for pgo function
+_pgo_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ -f "$HOME/.project-opener.json" ]]; then
+        local projects=$(grep -o '"name":"[^"]*"' "$HOME/.project-opener.json" | awk -F: '{gsub(/"/, "", $2); print $2}')
+        COMPREPLY=($(compgen -W "$projects" -- "$cur"))
+    fi
+}
+complete -F _pgo_completion pgo
 ```
 
 ### For Zsh (in ~/.zshrc)
@@ -85,6 +95,21 @@ pgo() {
         project-opener go "$1"
     fi
 }
+
+# Tab completion for pgo function
+_pgo() {
+    local projects_json="$HOME/.project-opener.json"
+    if [[ -f "$projects_json" ]]; then
+        if command -v jq >/dev/null 2>&1; then
+            local -a project_names=($(jq -r '.projects[].name' "$projects_json"))
+            _describe -t projects 'projects' project_names
+        else
+            local -a project_names=($(grep -o '"name":"[^"]*"' "$projects_json" | awk -F: '{gsub(/"/, "", $2); print $2}'))
+            _describe -t projects 'projects' project_names
+        fi
+    fi
+}
+compdef _pgo pgo
 ```
 
 After adding the alias and function, reload your configuration:
@@ -111,6 +136,11 @@ pj i   # Interactive mode
 # Examples with the navigation function
 pgo my-project    # Changes directory to the project
 pgo client-app    # Navigate to any saved project
+
+# Tab completion examples (press Tab after typing)
+pgo <Tab>         # Shows: my-project  client-app  other-projects
+pj open <Tab>     # Shows: my-project  client-app  other-projects
+pj go <Tab>       # Shows: my-project  client-app  other-projects
 ```
 
 ## Setting Up Auto-completion
@@ -145,6 +175,43 @@ echo 'compinit' >> ~/.zshrc
 
 # Apply changes
 source ~/.zshrc
+```
+
+### Tab Completion for `pgo` Function
+
+The `pgo` function requires its own completion handler to enable tab completion. If you've already set up the function above, tab completion should work automatically. However, if `pgo <Tab>` doesn't show your project names, you may need to reload your shell configuration or check that the completion function was added correctly.
+
+**Testing Tab Completion:**
+```bash
+# After adding projects with: pj add project-name ~/path/to/project
+# Test that tab completion works:
+pgo <Tab>
+# Should show: project-name1  project-name2  project-name3
+```
+
+**Troubleshooting Tab Completion:**
+```bash
+# If tab completion doesn't work, try:
+source ~/.zshrc
+
+# Or restart your terminal and test again
+# Make sure you have projects added first:
+pj list
+```
+
+**For Bash Users:**
+If you're using Bash, add this completion function to your ~/.bashrc after the `pgo` function:
+
+```bash
+# Tab completion for pgo function in Bash
+_pgo_completion() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    if [[ -f "$HOME/.project-opener.json" ]]; then
+        local projects=$(grep -o '"name":"[^"]*"' "$HOME/.project-opener.json" | awk -F: '{gsub(/"/, "", $2); print $2}')
+        COMPREPLY=($(compgen -W "$projects" -- "$cur"))
+    fi
+}
+complete -F _pgo_completion pgo
 ```
 
 ## Basic Usage
@@ -234,11 +301,12 @@ Be careful when editing directly to maintain the proper JSON structure.
 ## Tips & Tricks
 
 1. **Run without command**: Simply typing `pj` launches interactive mode
-2. **Tab completion**: Use tab to complete project names and commands (including the `go` command)
+2. **Tab completion**: Use tab to complete project names and commands (including `pgo`, `go`, `open`, and `remove` commands). If `pgo <Tab>` doesn't work, make sure you've added the completion function from the setup guide above
 3. **Path flexibility**: Add projects using relative paths, absolute paths, or home-relative paths (`~`)
 4. **Search flexibility**: Search works across project names, paths, and company names
 5. **Quick navigation**: Use `pgo <project-name>` to instantly navigate to any project directory
 6. **Shell scripting**: Use `pj go <project-name>` in scripts to get project paths programmatically
+7. **Reload after changes**: After adding the `pgo` completion function, run `source ~/.zshrc` (or `source ~/.bashrc`) to enable tab completion immediately
 
 ## Troubleshooting
 
